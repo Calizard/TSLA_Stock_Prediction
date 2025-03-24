@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, accuracy_score, classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
-from imblearn.over_sampling import SMOTE
 
 # Load historical data
 data = pd.read_csv('TSLA_Combined_processed.csv')  # Replace with your file path

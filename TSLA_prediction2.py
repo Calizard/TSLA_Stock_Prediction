@@ -54,27 +54,14 @@ current_close = march_21_data['Close'].values[0]
 prev_close = march_21_data['PrevClose'].values[0]
 prev_open = march_21_data['PrevOpen'].values[0]
 
-# Prepare features for prediction
-features = np.array([[current_open, current_close, prev_close, prev_open]])
-features_df = pd.DataFrame(features, columns=X.columns)  # Convert to DataFrame with feature names
-features_scaled = scaler.transform(features_df)  # Transform using the scaler
-
-# Predict NextOpen and NextClose for March 21, 2025
-predicted_next_open_march_21 = model_open.predict(features_scaled)[0]
-predicted_next_close_march_21 = model_close.predict(features_scaled)[0]
-print(f"Predicted NextOpen for March 21, 2025: {predicted_next_open_march_21:.2f}")
-print(f"Predicted NextClose for March 21, 2025: {predicted_next_close_march_21:.2f}")
-
 # Initialize account balance and position
 initial_capital = 10000  # Initial capital in dollars
 account_balance = initial_capital
 shares_held = 0  # Number of shares held
 transaction_fee_rate = 0.01  # 1% transaction fee for buy or sell
 
-# Use the predicted NextOpen for March 21, 2025, as the opening price for March 24, 2025
+# Use the predicted Open for March 24, 2025, as the opening price for March 24, 2025
 current_date = pd.to_datetime('2025-03-24')
-current_open = predicted_next_open_march_21
-current_close = predicted_next_close_march_21  # Use predicted NextClose for March 21, 2025
 
 # Initialize variables
 decisions = []
@@ -86,12 +73,23 @@ for _ in range(5):  # 5 trading days
     features_df = pd.DataFrame(features, columns=X.columns)  # Convert to DataFrame with feature names
     features_scaled = scaler.transform(features_df)  # Transform using the scaler
 
-    # Predict NextOpen and NextClose
-    predicted_next_open = model_open.predict(features_scaled)[0]
-    predicted_next_close = model_close.predict(features_scaled)[0]
+    # Predict Current Open and Close
+    predicted_open = model_open.predict(features_scaled)[0]  # Predicted opening price for the current day
+    predicted_close = model_close.predict(features_scaled)[0]  # Predicted closing price for the current day
+
+    temp_open = predicted_open
+    temp_close = predicted_close
+
+    # Prepare features for next open prediction
+    features_next = np.array([[temp_open, temp_close, current_open, current_close]])
+    features_df_next = pd.DataFrame(features_next, columns=X.columns)  # Convert to DataFrame with feature names
+    features_scaled_next = scaler.transform(features_df_next)  # Transform using the scaler
+
+    # Predict Next Open
+    predicted_next_open = model_open.predict(features_scaled_next)[0]  # Predicted the opening price for the next day
 
     # Make decision based on predicted NextOpen price
-    price_change = (predicted_next_open - current_open) / current_open * 100
+    price_change = (predicted_next_open - predicted_open) / predicted_open * 100  # Corrected calculation
 
     if price_change > 2.0:  # Buy if price increase > transaction fee (1% buy + 1% sell)
         decision = 'Buy'
@@ -102,21 +100,21 @@ for _ in range(5):  # 5 trading days
     decisions.append(decision)
 
     # Execute trading decision
-    if decision == 'Buy' and account_balance >= current_open:
+    if decision == 'Buy' and account_balance >= predicted_open:
         # Calculate number of shares to buy
-        shares_to_buy = (account_balance * (1 - transaction_fee_rate)) // current_open
+        shares_to_buy = (account_balance * (1 - transaction_fee_rate)) // predicted_open
         shares_held += shares_to_buy
-        account_balance -= shares_to_buy * current_open * (1 + transaction_fee_rate)
+        account_balance -= shares_to_buy * predicted_open * (1 + transaction_fee_rate)
     elif decision == 'Sell' and shares_held > 0:
         # Sell all shares held
-        account_balance += shares_held * current_open * (1 - transaction_fee_rate)
+        account_balance += shares_held * predicted_open * (1 - transaction_fee_rate)
         shares_held = 0
 
     # Print results for the day
     print(f"Date: {current_date.date()}")
-    print(f"Current Open: {current_open:.2f}")
-    print(f"Predicted NextOpen: {predicted_next_open:.2f}")
-    print(f"Predicted NextClose: {predicted_next_close:.2f}")
+    print(f"Predicted Open (Current Day): {predicted_open:.2f}")
+    print(f"Predicted Close (Current Day): {predicted_close:.2f}")
+    print(f"Predicted NextOpen (Next Day): {predicted_next_open:.2f}")
     print(f"Decision: {decision}")
     print(f"Shares Held: {shares_held}")
     print(f"Account Balance: ${account_balance:.2f}")
